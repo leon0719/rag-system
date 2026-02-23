@@ -1,0 +1,60 @@
+services:
+  api:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.dev
+    ports:
+      - "8002:8002"
+    volumes:
+      - ..:/app
+      - api_venv:/app/.venv
+    env_file:
+      - ../.env.local
+    environment:
+      - UV_LINK_MODE=copy
+    command: >
+      sh -c "uv run alembic upgrade head &&
+             uv run uvicorn app.main:app --host 0.0.0.0 --port 8002 --reload"
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    networks:
+      - ragnet
+
+  db:
+    image: pgvector/pgvector:pg17
+    environment:
+      POSTGRES_USER: raguser
+      POSTGRES_PASSWORD: ragpass
+      POSTGRES_DB: ragdb
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U raguser -d ragdb"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - ragnet
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - ragnet
+
+volumes:
+  postgres_data:
+  redis_data:
+  api_venv:
+
+networks:
+  ragnet:
+    driver: bridge

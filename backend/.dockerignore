@@ -1,0 +1,48 @@
+# Git
+.git
+.gitignore
+
+# Python
+__pycache__
+*.py[cod]
+*$py.class
+*.so
+.Python
+.venv
+venv
+ENV
+
+# IDE
+.idea
+.vscode
+*.swp
+*.swo
+
+# Testing
+.pytest_cache
+.mypy_cache
+.ruff_cache
+.coverage
+htmlcov
+
+# Environment files
+.env
+.env.*
+
+# Docker
+docker-compose*.yml
+
+# Documentation
+*.md
+
+# Logs
+*.log
+
+# macOS
+.DS_Store
+
+# Editor
+*~
+
+# Claude
+.claude

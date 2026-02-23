@@ -1,0 +1,22 @@
+services:
+  api:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    ports:
+      - "8002:8002"
+    env_file:
+      - ../.env.prod
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8002/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+# Production notes:
+# 1. Use external DB and Redis services (RDS, ElastiCache, Cloud SQL, etc.)
+# 2. Set DATABASE_URL and REDIS_URL in .env.prod
+# 3. Add nginx or load balancer in front
+# 4. Set CORS_ALLOWED_ORIGINS to your domain

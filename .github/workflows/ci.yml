@@ -1,0 +1,98 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "backend/**"
+      - ".github/workflows/ci.yml"
+  pull_request:
+    branches: [main]
+    paths:
+      - "backend/**"
+      - ".github/workflows/ci.yml"
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  code-quality:
+    name: Code Quality
+    runs-on: ubuntu-latest
+    env:
+      ENV: test
+      DATABASE_URL: sqlite+aiosqlite://
+      REDIS_URL: redis://localhost:6379/0
+      OPENAI_API_KEY: sk-dummy-key-for-type-check
+      JWT_SECRET_KEY: dummy-jwt-secret-for-type-check
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v4
+        with:
+          enable-cache: true
+          cache-dependency-glob: "backend/uv.lock"
+
+      - name: Install dependencies
+        working-directory: ./backend
+        run: uv sync --frozen --group dev
+
+      - name: Format check
+        working-directory: ./backend
+        run: uv run ruff format --check .
+
+      - name: Lint check
+        working-directory: ./backend
+        run: uv run ruff check .
+
+      - name: Type check
+        working-directory: ./backend
+        run: uv run mypy .
+
+  test:
+    name: Test
+    runs-on: ubuntu-latest
+    env:
+      ENV: test
+      DATABASE_URL: sqlite+aiosqlite://
+      REDIS_URL: redis://localhost:6379/0
+      OPENAI_API_KEY: sk-test-key-for-ci
+      JWT_SECRET_KEY: test-jwt-secret-key-for-ci
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v4
+        with:
+          enable-cache: true
+          cache-dependency-glob: "backend/uv.lock"
+
+      - name: Install dependencies
+        working-directory: ./backend
+        run: uv sync --frozen --group dev
+
+      - name: Run tests with coverage
+        working-directory: ./backend
+        run: uv run pytest -n 0 --cov=app --cov-report=xml --cov-report=term-missing -v
+
+      - name: Upload coverage reports
+        uses: codecov/codecov-action@v4
+        with:
+          file: ./backend/coverage.xml
+          flags: backend
+          fail_ci_if_error: false
+        continue-on-error: true
