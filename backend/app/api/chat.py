@@ -14,7 +14,9 @@ router = APIRouter(prefix="/chat", tags=["chat"])
 
 @router.post("/query")
 @limiter.limit("10/minute", key_func=get_user_id_or_ip)
-async def query(request: Request, response: Response, payload: QueryRequest, db: DBSession, user: CurrentUser):
+async def query(
+    request: Request, response: Response, payload: QueryRequest, db: DBSession, user: CurrentUser
+):
     """RAG query with Server-Sent Events streaming.
 
     SSE events:

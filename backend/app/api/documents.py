@@ -86,7 +86,9 @@ async def _get_user_document(
 
 @router.get("/{document_id}", response_model=DocumentDetail)
 @limiter.limit("30/minute", key_func=get_user_id_or_ip)
-async def get_document(request: Request, response: Response, document_id: uuid.UUID, db: DBSession, user: CurrentUser):
+async def get_document(
+    request: Request, response: Response, document_id: uuid.UUID, db: DBSession, user: CurrentUser
+):
     """Get document details (ownership check)."""
     return await _get_user_document(db, document_id, user.id)
 
