@@ -7,10 +7,12 @@ from typing import Any
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.openapi.utils import get_openapi
+from slowapi.middleware import SlowAPIASGIMiddleware
 
-from app.api import auth, chat, documents, health
+from app.api import auth, chat, conversations, documents, health
 from app.config import get_settings
 from app.core.exceptions import register_exception_handlers
+from app.core.limiter import limiter
 from app.core.logging import setup_logging
 from app.database import get_engine
 
@@ -34,6 +36,10 @@ def create_app() -> FastAPI:
         lifespan=lifespan,
     )
 
+    # Rate limiting
+    application.state.limiter = limiter
+    application.add_middleware(SlowAPIASGIMiddleware)
+
     # CORS
     application.add_middleware(
         CORSMiddleware,
@@ -51,6 +57,7 @@ def create_app() -> FastAPI:
     application.include_router(health.router, prefix="/api")
     application.include_router(auth.router, prefix="/api")
     application.include_router(documents.router, prefix="/api")
+    application.include_router(conversations.router, prefix="/api")
     application.include_router(chat.router, prefix="/api")
 
     def custom_openapi() -> dict[str, Any]:

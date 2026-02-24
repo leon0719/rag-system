@@ -3,6 +3,7 @@
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 from loguru import logger
+from slowapi.errors import RateLimitExceeded
 
 
 class AppError(Exception):
@@ -58,6 +59,16 @@ class DocumentProcessingError(AppError):
 
 def register_exception_handlers(app: FastAPI) -> None:
     """Register custom exception handlers on the FastAPI app."""
+
+    @app.exception_handler(RateLimitExceeded)
+    async def rate_limit_handler(request: Request, exc: RateLimitExceeded) -> JSONResponse:
+        logger.warning(
+            f"Rate limit exceeded: {request.client.host if request.client else 'unknown'} {request.url.path}"
+        )
+        return JSONResponse(
+            status_code=429,
+            content={"detail": "Too many requests. Please try again later."},
+        )
 
     @app.exception_handler(AppError)
     async def app_error_handler(request: Request, exc: AppError) -> JSONResponse:

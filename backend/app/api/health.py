@@ -1,9 +1,10 @@
 """Health check endpoint."""
 
-from fastapi import APIRouter, Response
+from fastapi import APIRouter, Request, Response
 from loguru import logger
 from sqlalchemy import text
 
+from app.core.limiter import limiter
 from app.dependencies import DBSession
 from app.services.auth import get_redis
 
@@ -13,7 +14,8 @@ root_router = APIRouter(tags=["root"])
 
 
 @router.get("/health")
-async def health(db: DBSession, response: Response):
+@limiter.exempt
+async def health(request: Request, db: DBSession, response: Response):
     """Health check: verify database and Redis connectivity."""
     checks: dict[str, str] = {}
 
@@ -42,6 +44,7 @@ async def health(db: DBSession, response: Response):
 
 
 @root_router.get("/")
-async def root():
+@limiter.exempt
+async def root(request: Request):
     """Root endpoint: simple welcome message."""
     return {"message": "Welcome to the RAG System API!"}

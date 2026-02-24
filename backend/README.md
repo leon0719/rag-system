@@ -1,15 +1,16 @@
 # FastAPI RAG System Backend
 
-基於 FastAPI 的 RAG (Retrieval-Augmented Generation) 系統後端，支援文件上傳、向量搜尋與 AI 問答（SSE 串流）。
+基於 FastAPI 的 RAG (Retrieval-Augmented Generation) 系統後端，支援文件上傳、向量搜尋、AI 問答（SSE 串流）與對話管理。
 
 ## 技術棧
 
 - **Web 框架**: FastAPI, Uvicorn
 - **資料庫**: PostgreSQL 17 + pgvector (向量搜尋)
-- **快取**: Redis 7 (Token 黑名單)
+- **快取**: Redis 7 (Token 黑名單, 速率限制)
 - **ORM**: SQLAlchemy 2.x (async) + Alembic
 - **AI**: OpenAI API (embedding + chat completion, SSE streaming)
 - **認證**: JWT (PyJWT) + bcrypt
+- **速率限制**: SlowAPI (Redis-backed)
 - **Python**: 3.13
 
 ## 快速開始
@@ -87,9 +88,13 @@ cp .env.local.example .env.prod
 | `EMBEDDING_DIMENSION` | Embedding 維度 | `1536` |
 | `CHAT_MODEL` | Chat 模型 | `gpt-4o` |
 | `CHAT_TEMPERATURE` | Chat 溫度 | `0.7` |
+| `CHAT_MAX_TOKENS` | Chat 回應最大 token 數 | `2048` |
 | `CHUNK_SIZE` | 文件切割 token 上限 | `512` |
 | `CHUNK_OVERLAP` | 切割重疊 token 數 | `50` |
+| `MAX_UPLOAD_FILE_SIZE` | 上傳檔案大小上限 | `10485760` (10 MB) |
 | `VECTOR_SEARCH_TOP_K` | 向量搜尋回傳數量 | `5` |
+| `RATE_LIMIT_ENABLED` | 是否啟用速率限制 | `true` |
+| `RATE_LIMIT_DEFAULT` | 預設速率限制 | `60/minute` |
 
 ## API 端點
 
@@ -126,6 +131,16 @@ cp .env.local.example .env.prod
 
 **文件上傳流程：** 讀取檔案 → 文字切割 (recursive splitter) → OpenAI embedding → 寫入 PostgreSQL + pgvector
 
+### 對話管理 `/api/conversations/`
+
+| 方法 | 路徑 | 說明 | 認證 |
+|------|------|------|------|
+| POST | `/api/conversations/` | 建立新對話 | Yes |
+| GET | `/api/conversations/` | 列出使用者的對話（分頁） | Yes |
+| GET | `/api/conversations/{id}` | 取得對話詳情（含所有訊息） | Yes |
+| PATCH | `/api/conversations/{id}` | 更新對話標題 | Yes |
+| DELETE | `/api/conversations/{id}` | 刪除對話及所有訊息 | Yes |
+
 ### RAG 問答 `/api/chat/`
 
 | 方法 | 路徑 | 說明 | 認證 |
@@ -134,12 +149,17 @@ cp .env.local.example .env.prod
 
 **請求格式：**
 ```json
-{"question": "你的問題", "top_k": 5}
+{"question": "你的問題", "top_k": 5, "conversation_id": "uuid (可選)"}
 ```
+
+若未提供 `conversation_id`，系統會自動建立新對話。
 
 **SSE 事件格式：**
 
 ```
+event: conversation_id
+data: "uuid-of-conversation"
+
 event: sources
 data: [{"document_id": "uuid", "filename": "test.txt", "chunk_index": 0, "content": "...", "score": 0.95}]
 
@@ -153,24 +173,26 @@ event: usage
 data: {"prompt_tokens": 100, "completion_tokens": 50, "total_tokens": 150}
 
 event: done
-data: {}
+data: {"full_text": "完整回答內容"}
 ```
 
 | 事件類型 | 說明 |
 |----------|------|
+| `conversation_id` | 對話 UUID（首先發送） |
 | `sources` | 檢索到的相關文件片段（JSON 陣列） |
 | `delta` | LLM 逐步生成的文字 token |
 | `usage` | Token 使用量統計 |
-| `done` | 串流結束 |
+| `done` | 串流結束（含完整回答文字） |
 | `error` | 錯誤訊息 |
 
 ## 安全功能
 
-- **密碼複雜度**：至少 8 字元，須包含大小寫字母、數字、特殊字元
+- **密碼複雜度**：至少 12 字元，須包含大小寫字母、數字、特殊字元
 - **Token 黑名單**：登出時 token 加入 Redis 黑名單，TTL 自動清理
 - **Refresh Token 安全**：HttpOnly cookie 防 XSS，token rotation 防重放攻擊
-- **資料隔離**：每個使用者只能存取自己的文件和 RAG 查詢結果
-- **所有權驗證**：文件 CRUD 操作會檢查所有權
+- **資料隔離**：每個使用者只能存取自己的文件、對話和 RAG 查詢結果
+- **所有權驗證**：文件和對話 CRUD 操作會檢查所有權
+- **速率限制**：SlowAPI + Redis，支援 per-user（JWT）和 per-IP fallback
 
 ## 常用指令
 
@@ -225,24 +247,30 @@ backend/
 │   │   ├── health.py              # GET /api/health
 │   │   ├── auth.py                # 認證 endpoints
 │   │   ├── documents.py           # 文件管理 endpoints
+│   │   ├── conversations.py       # 對話管理 endpoints (CRUD)
 │   │   └── chat.py                # RAG 問答 endpoint (SSE)
 │   ├── models/
 │   │   ├── base.py                # DeclarativeBase + TimestampMixin
 │   │   ├── user.py                # User model
-│   │   └── document.py            # Document + DocumentChunk (pgvector)
+│   │   ├── document.py            # Document + DocumentChunk (pgvector)
+│   │   └── conversation.py        # Conversation + Message
 │   ├── schemas/
 │   │   ├── auth.py                # 認證相關 schemas
 │   │   ├── document.py            # 文件相關 schemas
+│   │   ├── conversation.py        # 對話相關 schemas
 │   │   └── chat.py                # 問答相關 schemas
 │   ├── services/
 │   │   ├── auth.py                # JWT + 密碼 hash + Redis blacklist
 │   │   ├── embedding.py           # OpenAI embedding (batch, retry)
 │   │   ├── chunking.py            # Recursive text splitter (tiktoken)
 │   │   ├── document.py            # 文件 ingestion pipeline
+│   │   ├── conversation.py        # 對話 CRUD + message 管理
 │   │   └── rag.py                 # 向量搜尋 + LLM 生成 (SSE streaming)
 │   └── core/
 │       ├── logging.py             # Loguru 設定
-│       └── exceptions.py          # 自訂例外 + handlers
+│       ├── exceptions.py          # 自訂例外 + handlers
+│       ├── limiter.py             # SlowAPI 速率限制 (Redis-backed)
+│       └── openai.py              # AsyncOpenAI singleton client
 ├── alembic/                       # 資料庫遷移
 ├── scripts/
 │   └── check_unused_functions.py  # 未使用函式檢查

@@ -50,6 +50,11 @@ class Settings(BaseSettings):
 
     # RAG
     VECTOR_SEARCH_TOP_K: int = 5
+    CHAT_MAX_TOKENS: int = 2048
+
+    # Rate Limiting
+    RATE_LIMIT_ENABLED: bool = True
+    RATE_LIMIT_DEFAULT: str = "60/minute"
 
     def get_cors_origins(self) -> list[str]:
         """Parse comma-separated CORS origins."""

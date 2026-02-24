@@ -9,6 +9,7 @@ os.environ.setdefault("OPENAI_API_KEY", "sk-test-key")
 os.environ.setdefault("JWT_SECRET_KEY", "test-secret-key-for-jwt")
 os.environ.setdefault("ENV", "test")
 os.environ.setdefault("DEBUG", "true")
+os.environ.setdefault("RATE_LIMIT_ENABLED", "false")
 
 import uuid
 from collections.abc import AsyncGenerator
@@ -45,7 +46,7 @@ async def engine():
             CREATE TABLE IF NOT EXISTS users (
                 id VARCHAR(36) PRIMARY KEY,
                 email VARCHAR(255) UNIQUE NOT NULL,
-                username VARCHAR(50) NOT NULL,
+                username VARCHAR(50) UNIQUE NOT NULL,
                 hashed_password VARCHAR(255) NOT NULL,
                 is_active BOOLEAN DEFAULT 1 NOT NULL,
                 created_at DATETIME DEFAULT CURRENT_TIMESTAMP NOT NULL,
@@ -78,6 +79,32 @@ async def engine():
                 token_count INTEGER NOT NULL,
                 embedding TEXT,
                 metadata JSON
+            )
+        """)
+        )
+        await conn.execute(
+            text("""
+            CREATE TABLE IF NOT EXISTS conversations (
+                id VARCHAR(36) PRIMARY KEY,
+                user_id VARCHAR(36) NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                title VARCHAR(255) DEFAULT '' NOT NULL,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP NOT NULL,
+                updated_at DATETIME DEFAULT CURRENT_TIMESTAMP NOT NULL
+            )
+        """)
+        )
+        await conn.execute(
+            text("""
+            CREATE TABLE IF NOT EXISTS messages (
+                id VARCHAR(36) PRIMARY KEY,
+                conversation_id VARCHAR(36) NOT NULL REFERENCES conversations(id) ON DELETE CASCADE,
+                role VARCHAR(20) NOT NULL,
+                content TEXT NOT NULL,
+                sources JSON,
+                prompt_tokens INTEGER,
+                completion_tokens INTEGER,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP NOT NULL,
+                updated_at DATETIME DEFAULT CURRENT_TIMESTAMP NOT NULL
             )
         """)
         )

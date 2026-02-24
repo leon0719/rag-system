@@ -22,6 +22,8 @@ class User(TimestampMixin, Base):
     )
     username: Mapped[str] = mapped_column(
         String(50),
+        unique=True,
+        index=True,
         nullable=False,
     )
     hashed_password: Mapped[str] = mapped_column(
@@ -36,3 +38,6 @@ class User(TimestampMixin, Base):
 
     # Relationships
     documents = relationship("Document", back_populates="user", cascade="all, delete-orphan")
+    conversations = relationship(
+        "Conversation", back_populates="user", cascade="all, delete-orphan"
+    )

@@ -10,6 +10,7 @@ import jwt
 import redis.asyncio as aioredis
 from loguru import logger
 from sqlalchemy import or_, select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import get_settings
@@ -142,8 +143,13 @@ async def register_user(db: AsyncSession, email: str, username: str, password: s
         username=username,
         hashed_password=hash_password(password),
     )
-    db.add(user)
-    await db.flush()
+    try:
+        db.add(user)
+        await db.flush()
+    except IntegrityError:
+        raise ValidationError(
+            "Registration failed. Please check your details and try again."
+        ) from None
     logger.info(f"New user registered: user_id={user.id}, email={email}")
     return user
 

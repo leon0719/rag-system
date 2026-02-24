@@ -3,11 +3,14 @@
 import uuid
 from typing import Annotated
 
-from fastapi import APIRouter, File, Query, UploadFile
+from fastapi import APIRouter, File, Query, Request, Response, UploadFile
 from loguru import logger
+from openai import OpenAIError
 from sqlalchemy.ext.asyncio import AsyncSession
+from tenacity import RetryError
 
 from app.core.exceptions import DocumentProcessingError, NotFoundError
+from app.core.limiter import get_user_id_or_ip, limiter
 from app.dependencies import CurrentUser, DBSession
 from app.models.document import Document
 from app.schemas.document import DocumentDetail, DocumentUploadResponse, PaginatedDocumentList
@@ -17,7 +20,10 @@ router = APIRouter(prefix="/documents", tags=["documents"])
 
 
 @router.post("/upload", response_model=list[DocumentUploadResponse], status_code=201)
+@limiter.limit("10/minute", key_func=get_user_id_or_ip)
 async def upload_documents(
+    request: Request,
+    response: Response,
     files: Annotated[list[UploadFile], File()],
     db: DBSession,
     user: CurrentUser,
@@ -43,7 +49,7 @@ async def upload_documents(
                         chunk_count=document.chunk_count,
                     )
                 )
-        except Exception as e:
+        except (DocumentProcessingError, OpenAIError, RetryError) as e:
             filename = file.filename or "unknown"
             logger.error(f"Failed to process {filename}: {e}")
             errors.append(f"{filename}: {e}")
@@ -55,7 +61,10 @@ async def upload_documents(
 
 
 @router.get("/", response_model=PaginatedDocumentList)
+@limiter.limit("30/minute", key_func=get_user_id_or_ip)
 async def list_documents(
+    request: Request,
+    response: Response,
     db: DBSession,
     user: CurrentUser,
     page: int = Query(1, ge=1, le=1000),
@@ -76,13 +85,17 @@ async def _get_user_document(
 
 
 @router.get("/{document_id}", response_model=DocumentDetail)
-async def get_document(document_id: uuid.UUID, db: DBSession, user: CurrentUser):
+@limiter.limit("30/minute", key_func=get_user_id_or_ip)
+async def get_document(request: Request, response: Response, document_id: uuid.UUID, db: DBSession, user: CurrentUser):
     """Get document details (ownership check)."""
     return await _get_user_document(db, document_id, user.id)
 
 
 @router.delete("/{document_id}", status_code=204)
-async def delete_document(document_id: uuid.UUID, db: DBSession, user: CurrentUser):
+@limiter.limit("10/minute", key_func=get_user_id_or_ip)
+async def delete_document(
+    request: Request, response: Response, document_id: uuid.UUID, db: DBSession, user: CurrentUser
+):
     """Delete a document and all its chunks (ownership check)."""
     document = await _get_user_document(db, document_id, user.id)
     await db.delete(document)

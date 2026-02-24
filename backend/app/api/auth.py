@@ -5,6 +5,7 @@ import uuid as _uuid
 from fastapi import APIRouter, Request, Response
 
 from app.core.exceptions import AuthenticationError
+from app.core.limiter import limiter
 from app.dependencies import CurrentUser, DBSession
 from app.models.user import User
 from app.schemas.auth import (
@@ -57,7 +58,8 @@ def _clear_refresh_token_cookie(response: Response) -> None:
 
 
 @router.post("/register", response_model=UserResponse, status_code=201)
-async def register(payload: RegisterRequest, db: DBSession):
+@limiter.limit("5/minute")
+async def register(request: Request, response: Response, payload: RegisterRequest, db: DBSession):
     """Register a new user."""
     user = await register_user(
         db=db,
@@ -69,7 +71,8 @@ async def register(payload: RegisterRequest, db: DBSession):
 
 
 @router.post("/login", response_model=TokenResponse)
-async def login(payload: LoginRequest, db: DBSession, response: Response):
+@limiter.limit("10/minute")
+async def login(request: Request, payload: LoginRequest, db: DBSession, response: Response):
     """Login and return access token. Refresh token set as HttpOnly cookie."""
     user = await authenticate_user(db, payload.email, payload.password)
 
@@ -82,6 +85,7 @@ async def login(payload: LoginRequest, db: DBSession, response: Response):
 
 
 @router.post("/refresh", response_model=TokenResponse)
+@limiter.limit("10/minute")
 async def refresh(request: Request, db: DBSession, response: Response):
     """Refresh access token using HttpOnly cookie with token rotation."""
     refresh_token_str = request.cookies.get(REFRESH_TOKEN_COOKIE_NAME)
@@ -124,6 +128,7 @@ async def refresh(request: Request, db: DBSession, response: Response):
 
 
 @router.post("/logout", response_model=LogoutResponse)
+@limiter.limit("10/minute")
 async def logout(request: Request, response: Response, user: CurrentUser):
     """Logout and blacklist tokens."""
     # Blacklist the access token
@@ -143,6 +148,7 @@ async def logout(request: Request, response: Response, user: CurrentUser):
 
 
 @router.get("/me", response_model=UserResponse)
-async def me(user: CurrentUser):
+@limiter.limit("30/minute")
+async def me(request: Request, response: Response, user: CurrentUser):
     """Get current user info."""
     return user
