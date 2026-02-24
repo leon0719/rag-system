@@ -112,6 +112,24 @@ async def delete_conversation(
     await db.flush()
 
 
+async def get_recent_messages(
+    db: AsyncSession,
+    conversation_id: uuid.UUID,
+    limit: int = 10,
+) -> list[Message]:
+    """Get the most recent messages in a conversation, ordered chronologically."""
+    stmt = (
+        select(Message)
+        .where(Message.conversation_id == conversation_id)
+        .order_by(Message.created_at.desc())
+        .limit(limit)
+    )
+    result = await db.execute(stmt)
+    messages = list(result.scalars().all())
+    messages.reverse()
+    return messages
+
+
 async def add_message(
     db: AsyncSession,
     conversation_id: uuid.UUID,

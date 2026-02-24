@@ -19,7 +19,11 @@ function ChatDetailPage() {
   const params = Route.useParams();
   const auth = useAuth();
   const queryClient = useQueryClient();
-  const chat = createChatStore(() => auth.state.accessToken);
+  const chat = createChatStore({
+    getToken: () => auth.state.accessToken,
+    setToken: (token) => auth.setAccessToken(token),
+    onAuthFailure: () => auth.logout(),
+  });
 
   const conversationQuery = createQuery(() => ({
     queryKey: queryKeys.conversations.detail(params().chatId),

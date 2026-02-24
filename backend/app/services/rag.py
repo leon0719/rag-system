@@ -14,7 +14,7 @@ from app.config import get_settings
 from app.core.openai import get_openai_client
 from app.models.document import Document, DocumentChunk
 from app.schemas.chat import SourceChunk
-from app.services.conversation import add_message, create_conversation
+from app.services.conversation import add_message, create_conversation, get_recent_messages
 from app.services.embedding import embed_text
 
 settings = get_settings()
@@ -38,23 +38,26 @@ async def vector_search(
     query_embedding: list[float],
     user_id: uuid.UUID,
     top_k: int,
+    max_distance: float | None = None,
 ) -> list[tuple[DocumentChunk, float, str]]:
     """Search for the most similar chunks belonging to the user.
 
     Returns list of (chunk, distance_score, filename) tuples.
+    Filters out chunks with cosine distance above max_distance.
     """
+    distance_col = DocumentChunk.embedding.cosine_distance(query_embedding).label("distance")
+
     stmt = (
-        select(
-            DocumentChunk,
-            DocumentChunk.embedding.cosine_distance(query_embedding).label("distance"),
-            Document.filename,
-        )
+        select(DocumentChunk, distance_col, Document.filename)
         .join(Document, DocumentChunk.document_id == Document.id)
         .where(Document.user_id == user_id)
         .where(DocumentChunk.embedding.isnot(None))
-        .order_by(text("distance"))
-        .limit(top_k)
     )
+
+    if max_distance is not None:
+        stmt = stmt.where(distance_col <= max_distance)
+
+    stmt = stmt.order_by(text("distance")).limit(top_k)
 
     result = await db.execute(stmt)
     rows = result.all()
@@ -100,8 +103,14 @@ async def query_rag_stream(
         yield _sse_event("error", {"detail": "Failed to process your query. Please try again."})
         return
 
-    # 2. Vector search (only user's documents)
-    results = await vector_search(db, query_embedding, user_id, top_k)
+    # 2. Vector search (only user's documents, filtered by similarity threshold)
+    results = await vector_search(
+        db,
+        query_embedding,
+        user_id,
+        top_k,
+        max_distance=settings.VECTOR_SEARCH_MAX_DISTANCE,
+    )
 
     if not results:
         no_result_msg = (
@@ -110,7 +119,7 @@ async def query_rag_stream(
         yield _sse_event("sources", [])
         yield _sse_event("delta", no_result_msg)
         await add_message(db, conversation_id, role="assistant", content=no_result_msg)
-        yield _sse_event("done", {})
+        yield _sse_event("done", {"full_text": no_result_msg})
         return
 
     # 3. Build context and send sources
@@ -133,17 +142,28 @@ async def query_rag_stream(
 
     context = "\n\n---\n\n".join(context_parts)
 
-    # 4. Stream LLM response
+    # 4. Build LLM messages with chat history
+    recent_messages = await get_recent_messages(
+        db, conversation_id, limit=settings.CHAT_HISTORY_MESSAGES
+    )
+    # Exclude the user message we just saved (last one)
+    history = [m for m in recent_messages if m.content != question or m.role != "user"]
+
+    messages: list[dict[str, str]] = [
+        {"role": "system", "content": SYSTEM_PROMPT.format(context=context)},
+    ]
+    for msg in history:
+        messages.append({"role": msg.role, "content": msg.content})
+    messages.append({"role": "user", "content": question})
+
+    # 5. Stream LLM response
     client = get_openai_client()
     try:
-        stream = await client.chat.completions.create(
+        stream = await client.chat.completions.create(  # type: ignore[call-overload]
             model=settings.CHAT_MODEL,
             temperature=settings.CHAT_TEMPERATURE,
             max_tokens=settings.CHAT_MAX_TOKENS,
-            messages=[
-                {"role": "system", "content": SYSTEM_PROMPT.format(context=context)},
-                {"role": "user", "content": question},
-            ],
+            messages=messages,
             stream=True,
             stream_options={"include_usage": True},
         )
@@ -174,7 +194,7 @@ async def query_rag_stream(
                 },
             )
 
-    # 5. Save assistant message with sources and usage
+    # 6. Save assistant message with sources and usage
     await add_message(
         db,
         conversation_id,

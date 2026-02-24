@@ -3,19 +3,35 @@ import { API_BASE_URL } from "./constants";
 
 interface FetchSSEOptions {
   token: string | null;
+  getToken?: () => string | null;
+  setToken?: (token: string | null) => void;
+  onAuthFailure?: () => void;
   signal?: AbortSignal;
   onEvent: (event: SSEEvent) => void;
   onError: (error: string, status?: number) => void;
   onDone: () => void;
 }
 
-export async function fetchSSE(
-  path: string,
-  body: Record<string, unknown>,
-  options: FetchSSEOptions,
-) {
-  const { token, signal, onEvent, onError, onDone } = options;
+async function refreshAccessToken(): Promise<string | null> {
+  try {
+    const res = await fetch(`${API_BASE_URL}/auth/refresh`, {
+      method: "POST",
+      credentials: "include",
+    });
+    if (!res.ok) return null;
+    const data = await res.json();
+    return data.access as string;
+  } catch {
+    return null;
+  }
+}
 
+async function doFetch(
+  url: string,
+  body: string,
+  token: string | null,
+  signal?: AbortSignal,
+): Promise<Response> {
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
     Accept: "text/event-stream",
@@ -23,20 +39,50 @@ export async function fetchSSE(
   if (token) {
     headers.Authorization = `Bearer ${token}`;
   }
+  return fetch(url, {
+    method: "POST",
+    headers,
+    body,
+    credentials: "include",
+    signal,
+  });
+}
+
+export async function fetchSSE(
+  path: string,
+  body: Record<string, unknown>,
+  options: FetchSSEOptions,
+) {
+  const { signal, onEvent, onError, onDone } = options;
+  const url = `${API_BASE_URL}${path}`;
+  const bodyStr = JSON.stringify(body);
 
   let res: Response;
   try {
-    res = await fetch(`${API_BASE_URL}${path}`, {
-      method: "POST",
-      headers,
-      body: JSON.stringify(body),
-      credentials: "include",
-      signal,
-    });
+    res = await doFetch(url, bodyStr, options.token, signal);
   } catch {
     if (signal?.aborted) return;
     onError("Network error");
     return;
+  }
+
+  // Auto-refresh token on 401, then retry once
+  if (res.status === 401 && options.getToken) {
+    const newToken = await refreshAccessToken();
+    if (newToken) {
+      options.setToken?.(newToken);
+      try {
+        res = await doFetch(url, bodyStr, newToken, signal);
+      } catch {
+        if (signal?.aborted) return;
+        onError("Network error");
+        return;
+      }
+    } else {
+      options.onAuthFailure?.();
+      onError("Authentication failed", 401);
+      return;
+    }
   }
 
   if (!res.ok) {

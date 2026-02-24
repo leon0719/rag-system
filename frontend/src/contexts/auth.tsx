@@ -5,6 +5,7 @@ import type { AuthState, LoginRequest, RegisterRequest, TokenResponse, User } fr
 
 interface AuthContextValue {
   state: AuthState;
+  setAccessToken: (token: string | null) => void;
   login: (data: LoginRequest) => Promise<void>;
   register: (data: RegisterRequest) => Promise<void>;
   logout: () => Promise<void>;
@@ -93,6 +94,7 @@ export function AuthProvider(props: AuthProviderProps) {
 
   const contextValue: AuthContextValue = {
     state,
+    setAccessToken: (token: string | null) => setState("accessToken", token),
     login,
     register,
     logout,

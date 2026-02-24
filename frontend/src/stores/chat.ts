@@ -9,7 +9,17 @@ interface SendQueryOptions {
   onConversationCreated?: (id: string) => void;
 }
 
-export function createChatStore(getToken: () => string | null) {
+interface ChatStoreAuth {
+  getToken: () => string | null;
+  setToken: (token: string | null) => void;
+  onAuthFailure: () => void;
+}
+
+export function createChatStore(getTokenOrAuth: (() => string | null) | ChatStoreAuth) {
+  const auth: ChatStoreAuth =
+    typeof getTokenOrAuth === "function"
+      ? { getToken: getTokenOrAuth, setToken: () => {}, onAuthFailure: () => {} }
+      : getTokenOrAuth;
   const [state, setState] = createStore<ChatState & { conversationId: string | null }>({
     messages: [],
     isStreaming: false,
@@ -69,7 +79,10 @@ export function createChatStore(getToken: () => string | null) {
     }
 
     fetchSSE("/chat/query", body, {
-      token: getToken(),
+      token: auth.getToken(),
+      getToken: auth.getToken,
+      setToken: auth.setToken,
+      onAuthFailure: auth.onAuthFailure,
       signal: abortController.signal,
       onEvent: (event: SSEEvent) => {
         switch (event.event) {
@@ -93,7 +106,7 @@ export function createChatStore(getToken: () => string | null) {
             const assistantMessage: ChatMessage = {
               id: crypto.randomUUID(),
               role: "assistant",
-              content: event.data.full_text,
+              content: event.data.full_text || accumulatedContent,
               sources,
               usage,
               timestamp: Date.now(),

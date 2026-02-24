@@ -50,7 +50,9 @@ class Settings(BaseSettings):
 
     # RAG
     VECTOR_SEARCH_TOP_K: int = 5
+    VECTOR_SEARCH_MAX_DISTANCE: float = 0.7
     CHAT_MAX_TOKENS: int = 2048
+    CHAT_HISTORY_MESSAGES: int = 10
 
     # Rate Limiting
     RATE_LIMIT_ENABLED: bool = True
