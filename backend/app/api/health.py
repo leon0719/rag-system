@@ -9,6 +9,8 @@ from app.services.auth import get_redis
 
 router = APIRouter(tags=["health"])
 
+root_router = APIRouter(tags=["root"])
+
 
 @router.get("/health")
 async def health(db: DBSession, response: Response):
@@ -37,3 +39,9 @@ async def health(db: DBSession, response: Response):
         response.status_code = 503
 
     return {"status": "healthy" if healthy else "unhealthy", **checks}
+
+
+@root_router.get("/")
+async def root():
+    """Root endpoint: simple welcome message."""
+    return {"message": "Welcome to the RAG System API!"}

@@ -47,6 +47,7 @@ def create_app() -> FastAPI:
     register_exception_handlers(application)
 
     # Routers
+    application.include_router(health.root_router)
     application.include_router(health.router, prefix="/api")
     application.include_router(auth.router, prefix="/api")
     application.include_router(documents.router, prefix="/api")
