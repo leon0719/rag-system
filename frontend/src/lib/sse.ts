@@ -5,7 +5,7 @@ interface FetchSSEOptions {
   token: string | null;
   signal?: AbortSignal;
   onEvent: (event: SSEEvent) => void;
-  onError: (error: string) => void;
+  onError: (error: string, status?: number) => void;
   onDone: () => void;
 }
 
@@ -41,7 +41,7 @@ export async function fetchSSE(
 
   if (!res.ok) {
     const err = await res.json().catch(() => ({ detail: "Request failed" }));
-    onError(err.detail);
+    onError(err.detail, res.status);
     return;
   }
 
@@ -92,10 +92,18 @@ export async function fetchSSE(
 
 function parseSSEData(event: string, rawData: string): SSEEvent | null {
   switch (event) {
+    case "conversation_id": {
+      let id: string;
+      try {
+        id = JSON.parse(rawData);
+      } catch {
+        id = rawData.trim();
+      }
+      return { event: "conversation_id", data: id };
+    }
     case "sources":
       return { event: "sources", data: JSON.parse(rawData) };
     case "delta": {
-      // Delta data can be a JSON string ("token") or plain text (token)
       let text: string;
       try {
         text = JSON.parse(rawData);

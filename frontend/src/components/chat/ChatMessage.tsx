@@ -1,5 +1,7 @@
+import { Show } from "solid-js";
 import { cn } from "~/lib/utils";
 import type { ChatMessage as ChatMessageType } from "~/types/chat";
+import { MarkdownRenderer } from "./MarkdownRenderer";
 
 interface ChatMessageProps {
   message: ChatMessageType;
@@ -16,7 +18,12 @@ export function ChatMessage(props: ChatMessageProps) {
           isUser() ? "bg-primary text-primary-foreground" : "bg-muted",
         )}
       >
-        <p class="whitespace-pre-wrap text-sm">{props.message.content}</p>
+        <Show
+          when={!isUser()}
+          fallback={<p class="whitespace-pre-wrap text-sm">{props.message.content}</p>}
+        >
+          <MarkdownRenderer content={props.message.content} />
+        </Show>
       </div>
     </div>
   );

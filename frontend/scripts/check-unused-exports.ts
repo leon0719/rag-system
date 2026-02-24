@@ -303,7 +303,10 @@ interface UsageCheckResult {
   reason: string;
 }
 
-function checkExportUsage(exportInfo: ExportInfo, allContents: Map<string, string>): UsageCheckResult {
+function checkExportUsage(
+  exportInfo: ExportInfo,
+  allContents: Map<string, string>,
+): UsageCheckResult {
   const { name, file: exportFile, line: exportLine } = exportInfo;
   const content = allContents.get(exportFile) || "";
 

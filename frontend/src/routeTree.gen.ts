@@ -19,6 +19,7 @@ import { Route as AuthedDocumentsIndexRouteImport } from './routes/_authed/docum
 import { Route as AuthedChatIndexRouteImport } from './routes/_authed/chat/index'
 import { Route as AuthedDocumentsUploadRouteImport } from './routes/_authed/documents/upload'
 import { Route as AuthedDocumentsIdRouteImport } from './routes/_authed/documents/$id'
+import { Route as AuthedChatChatIdRouteImport } from './routes/_authed/chat/$chatId'
 
 const RegisterRoute = RegisterRouteImport.update({
   id: '/register',
@@ -69,6 +70,11 @@ const AuthedDocumentsIdRoute = AuthedDocumentsIdRouteImport.update({
   path: '/$id',
   getParentRoute: () => AuthedDocumentsRoute,
 } as any)
+const AuthedChatChatIdRoute = AuthedChatChatIdRouteImport.update({
+  id: '/$chatId',
+  path: '/$chatId',
+  getParentRoute: () => AuthedChatRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -76,6 +82,7 @@ export interface FileRoutesByFullPath {
   '/register': typeof RegisterRoute
   '/chat': typeof AuthedChatRouteWithChildren
   '/documents': typeof AuthedDocumentsRouteWithChildren
+  '/chat/$chatId': typeof AuthedChatChatIdRoute
   '/documents/$id': typeof AuthedDocumentsIdRoute
   '/documents/upload': typeof AuthedDocumentsUploadRoute
   '/chat/': typeof AuthedChatIndexRoute
@@ -85,6 +92,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/login': typeof LoginRoute
   '/register': typeof RegisterRoute
+  '/chat/$chatId': typeof AuthedChatChatIdRoute
   '/documents/$id': typeof AuthedDocumentsIdRoute
   '/documents/upload': typeof AuthedDocumentsUploadRoute
   '/chat': typeof AuthedChatIndexRoute
@@ -98,6 +106,7 @@ export interface FileRoutesById {
   '/register': typeof RegisterRoute
   '/_authed/chat': typeof AuthedChatRouteWithChildren
   '/_authed/documents': typeof AuthedDocumentsRouteWithChildren
+  '/_authed/chat/$chatId': typeof AuthedChatChatIdRoute
   '/_authed/documents/$id': typeof AuthedDocumentsIdRoute
   '/_authed/documents/upload': typeof AuthedDocumentsUploadRoute
   '/_authed/chat/': typeof AuthedChatIndexRoute
@@ -111,6 +120,7 @@ export interface FileRouteTypes {
     | '/register'
     | '/chat'
     | '/documents'
+    | '/chat/$chatId'
     | '/documents/$id'
     | '/documents/upload'
     | '/chat/'
@@ -120,6 +130,7 @@ export interface FileRouteTypes {
     | '/'
     | '/login'
     | '/register'
+    | '/chat/$chatId'
     | '/documents/$id'
     | '/documents/upload'
     | '/chat'
@@ -132,6 +143,7 @@ export interface FileRouteTypes {
     | '/register'
     | '/_authed/chat'
     | '/_authed/documents'
+    | '/_authed/chat/$chatId'
     | '/_authed/documents/$id'
     | '/_authed/documents/upload'
     | '/_authed/chat/'
@@ -217,14 +229,23 @@ declare module '@tanstack/solid-router' {
       preLoaderRoute: typeof AuthedDocumentsIdRouteImport
       parentRoute: typeof AuthedDocumentsRoute
     }
+    '/_authed/chat/$chatId': {
+      id: '/_authed/chat/$chatId'
+      path: '/$chatId'
+      fullPath: '/chat/$chatId'
+      preLoaderRoute: typeof AuthedChatChatIdRouteImport
+      parentRoute: typeof AuthedChatRoute
+    }
   }
 }
 
 interface AuthedChatRouteChildren {
+  AuthedChatChatIdRoute: typeof AuthedChatChatIdRoute
   AuthedChatIndexRoute: typeof AuthedChatIndexRoute
 }
 
 const AuthedChatRouteChildren: AuthedChatRouteChildren = {
+  AuthedChatChatIdRoute: AuthedChatChatIdRoute,
   AuthedChatIndexRoute: AuthedChatIndexRoute,
 }
 

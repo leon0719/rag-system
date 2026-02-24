@@ -1,8 +1,9 @@
 import { createForm } from "@tanstack/solid-form";
 import { createFileRoute, Link, useNavigate } from "@tanstack/solid-router";
 import { createEffect, createSignal, Show } from "solid-js";
+import { AuthCard, AuthLayout, StaggerItem } from "~/components/layout";
 import { Button } from "~/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "~/components/ui/card";
+import { CardDescription, CardTitle } from "~/components/ui/card";
 import {
   TextFieldErrorMessage,
   TextFieldInput,
@@ -53,26 +54,29 @@ function RegisterPage() {
   }));
 
   return (
-    <div class="flex min-h-screen items-center justify-center px-4 py-8">
-      <Card class="w-full max-w-md">
-        <CardHeader class="text-center">
-          <CardTitle class="text-2xl">Create Account</CardTitle>
-          <CardDescription>Sign up to get started</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <form
-            onSubmit={(e) => {
-              e.preventDefault();
-              form.handleSubmit();
-            }}
-            class="space-y-4"
-          >
-            <Show when={serverError()}>
-              <div class="rounded-md bg-destructive/10 p-3 text-sm text-destructive">
-                {serverError()}
-              </div>
-            </Show>
+    <AuthLayout>
+      <AuthCard
+        header={
+          <StaggerItem index={0}>
+            <CardTitle class="text-2xl">Create Account</CardTitle>
+            <CardDescription>Sign up to get started</CardDescription>
+          </StaggerItem>
+        }
+      >
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            form.handleSubmit();
+          }}
+          class="space-y-4"
+        >
+          <Show when={serverError()}>
+            <div class="rounded-md bg-destructive/10 p-3 text-sm text-destructive">
+              {serverError()}
+            </div>
+          </Show>
 
+          <StaggerItem index={2}>
             <form.Field name="email">
               {(field) => (
                 <TextFieldRoot>
@@ -92,7 +96,9 @@ function RegisterPage() {
                 </TextFieldRoot>
               )}
             </form.Field>
+          </StaggerItem>
 
+          <StaggerItem index={3}>
             <form.Field name="username">
               {(field) => (
                 <TextFieldRoot>
@@ -112,7 +118,9 @@ function RegisterPage() {
                 </TextFieldRoot>
               )}
             </form.Field>
+          </StaggerItem>
 
+          <StaggerItem index={4}>
             <form.Field name="password">
               {(field) => (
                 <TextFieldRoot>
@@ -135,7 +143,9 @@ function RegisterPage() {
                 </TextFieldRoot>
               )}
             </form.Field>
+          </StaggerItem>
 
+          <StaggerItem index={5}>
             <form.Field name="confirmPassword">
               {(field) => (
                 <TextFieldRoot>
@@ -155,7 +165,9 @@ function RegisterPage() {
                 </TextFieldRoot>
               )}
             </form.Field>
+          </StaggerItem>
 
+          <StaggerItem index={6}>
             <form.Subscribe selector={(s) => [s.isSubmitting, s.canSubmit]}>
               {(state) => (
                 <Button type="submit" class="w-full" disabled={state()[0] || !state()[1]}>
@@ -163,16 +175,18 @@ function RegisterPage() {
                 </Button>
               )}
             </form.Subscribe>
+          </StaggerItem>
 
+          <StaggerItem index={7}>
             <p class="text-center text-sm text-muted-foreground">
               Already have an account?{" "}
               <Link to="/login" class="font-medium text-primary hover:underline">
                 Sign in
               </Link>
             </p>
-          </form>
-        </CardContent>
-      </Card>
-    </div>
+          </StaggerItem>
+        </form>
+      </AuthCard>
+    </AuthLayout>
   );
 }

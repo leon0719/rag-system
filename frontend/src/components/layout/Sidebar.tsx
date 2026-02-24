@@ -1,6 +1,7 @@
 import { Link } from "@tanstack/solid-router";
-import { FileText, LogOut, MessageSquare } from "lucide-solid";
+import { FileText, LogOut, Plus } from "lucide-solid";
 import { type ComponentProps, splitProps } from "solid-js";
+import { ConversationList } from "~/components/chat/ConversationList";
 import { useAuth } from "~/contexts/auth";
 import { cn } from "~/lib/utils";
 
@@ -30,27 +31,32 @@ export function Sidebar(props: SidebarProps) {
         </Link>
       </div>
 
-      <nav class="flex-1 space-y-1 p-3">
+      <nav class="flex min-h-0 flex-1 flex-col p-3">
         <Link
-          href="/chat"
+          to="/chat"
           onClick={() => local.onClose?.()}
-          activeProps={{ class: "bg-sidebar-accent text-sidebar-accent-foreground" }}
-          inactiveProps={{ class: "hover:bg-sidebar-accent/50" }}
-          class="flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors"
+          class="mb-2 flex items-center gap-2 rounded-md bg-primary px-3 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
         >
-          <MessageSquare class="size-4" />
-          Chat
+          <Plus class="size-4" />
+          New Chat
         </Link>
-        <Link
-          href="/documents"
-          onClick={() => local.onClose?.()}
-          activeProps={{ class: "bg-sidebar-accent text-sidebar-accent-foreground" }}
-          inactiveProps={{ class: "hover:bg-sidebar-accent/50" }}
-          class="flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors"
-        >
-          <FileText class="size-4" />
-          Documents
-        </Link>
+
+        <div class="min-h-0 flex-1 overflow-y-auto">
+          <ConversationList onSelect={() => local.onClose?.()} />
+        </div>
+
+        <div class="mt-2 border-t pt-2">
+          <Link
+            to="/documents"
+            onClick={() => local.onClose?.()}
+            activeProps={{ class: "bg-sidebar-accent text-sidebar-accent-foreground" }}
+            inactiveProps={{ class: "hover:bg-sidebar-accent/50" }}
+            class="flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors"
+          >
+            <FileText class="size-4" />
+            Documents
+          </Link>
+        </div>
       </nav>
 
       <div class="border-t p-3">

@@ -13,6 +13,7 @@ export interface Usage {
 }
 
 export type SSEEvent =
+  | { event: "conversation_id"; data: string }
   | { event: "sources"; data: Source[] }
   | { event: "delta"; data: string }
   | { event: "usage"; data: Usage }
@@ -34,9 +35,11 @@ export interface ChatState {
   streamingContent: string;
   streamingSources: Source[];
   error: string | null;
+  isRateLimited: boolean;
 }
 
 export interface ChatQueryRequest {
   question: string;
   top_k?: number;
+  conversation_id?: string;
 }

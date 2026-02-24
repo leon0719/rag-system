@@ -19,4 +19,7 @@ export default defineConfig({
     tanstackStart(),
     solidPlugin({ ssr: true }),
   ],
+  optimizeDeps: {
+    exclude: ["@tanstack/store"],
+  },
 });
