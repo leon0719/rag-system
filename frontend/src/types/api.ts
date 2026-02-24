@@ -6,7 +6,3 @@ export type {
   DocumentUploadResult,
   PaginatedDocuments,
 } from "./document";
-
-export interface ApiError {
-  detail: string;
-}

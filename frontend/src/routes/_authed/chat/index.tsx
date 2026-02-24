@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/solid-router";
 import { MessageSquare } from "lucide-solid";
-import { createEffect, For, Show } from "solid-js";
+import { createEffect, For, onCleanup, Show } from "solid-js";
 import { ChatInput } from "~/components/chat/ChatInput";
 import { ChatMessage } from "~/components/chat/ChatMessage";
 import { StreamingMessage } from "~/components/chat/StreamingMessage";
@@ -16,6 +16,11 @@ export const Route = createFileRoute("/_authed/chat/")({
 function ChatPage() {
   const auth = useAuth();
   const chat = createChatStore(() => auth.state.accessToken);
+
+  onCleanup(() => {
+    chat.cancelStream();
+  });
+
   let messagesEndRef: HTMLDivElement | undefined;
 
   createEffect(() => {

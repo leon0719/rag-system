@@ -1,10 +1,10 @@
+import { type QueryClient, QueryClientProvider } from "@tanstack/solid-query";
 import { createRootRouteWithContext, HeadContent, Link, Scripts } from "@tanstack/solid-router";
-import { QueryClient, QueryClientProvider } from "@tanstack/solid-query";
 
 import "@fontsource/inter";
 
-import { ErrorBoundary, Suspense } from "solid-js";
 import type { JSX } from "solid-js";
+import { Suspense } from "solid-js";
 import { HydrationScript } from "solid-js/web";
 
 import { AuthProvider } from "~/contexts/auth";

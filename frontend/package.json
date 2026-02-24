@@ -10,7 +10,8 @@
     "test": "vitest run",
     "format": "biome format",
     "lint": "biome lint",
-    "check": "biome check"
+    "check": "biome check",
+    "check-exports": "bun scripts/check-unused-exports.ts"
   },
   "dependencies": {
     "@fontsource/inter": "^5.1.1",
@@ -23,6 +24,7 @@
     "@tanstack/solid-router-devtools": "^1.133.20",
     "@tanstack/solid-router-ssr-query": "^1.132.25",
     "@tanstack/solid-start": "^1.133.20",
+    "@types/node": "^25.3.0",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "lucide-solid": "^0.544.0",

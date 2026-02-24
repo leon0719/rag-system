@@ -1,10 +1,20 @@
 import { Menu } from "lucide-solid";
-import { createSignal, type ParentProps, Show } from "solid-js";
+import { createEffect, createSignal, onCleanup, type ParentProps, Show } from "solid-js";
 import { cn } from "~/lib/utils";
 import { Sidebar } from "./Sidebar";
 
 export function AppLayout(props: ParentProps) {
   const [sidebarOpen, setSidebarOpen] = createSignal(false);
+
+  createEffect(() => {
+    if (sidebarOpen()) {
+      const handler = (e: KeyboardEvent) => {
+        if (e.key === "Escape") setSidebarOpen(false);
+      };
+      document.addEventListener("keydown", handler);
+      onCleanup(() => document.removeEventListener("keydown", handler));
+    }
+  });
 
   return (
     <div class="flex h-screen overflow-hidden bg-background">
@@ -16,11 +26,7 @@ export function AppLayout(props: ParentProps) {
       {/* Mobile sidebar overlay */}
       <Show when={sidebarOpen()}>
         <div class="fixed inset-0 z-40 md:hidden">
-          <div
-            class="fixed inset-0 bg-black/50"
-            onClick={() => setSidebarOpen(false)}
-            onKeyDown={(e) => e.key === "Escape" && setSidebarOpen(false)}
-          />
+          <div class="fixed inset-0 bg-black/50" onClick={() => setSidebarOpen(false)} />
           <div class="fixed inset-y-0 left-0 z-50 w-64">
             <Sidebar onClose={() => setSidebarOpen(false)} />
           </div>

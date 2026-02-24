@@ -1,6 +1,6 @@
 import { createForm } from "@tanstack/solid-form";
 import { createFileRoute, Link, useNavigate } from "@tanstack/solid-router";
-import { createSignal, Show } from "solid-js";
+import { createEffect, createSignal, Show } from "solid-js";
 import { Button } from "~/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "~/components/ui/card";
 import {
@@ -22,10 +22,11 @@ function LoginPage() {
   const navigate = useNavigate();
   const [serverError, setServerError] = createSignal("");
 
-  // Redirect if already logged in
-  if (auth.state.isAuthenticated) {
-    navigate({ to: "/chat" });
-  }
+  createEffect(() => {
+    if (auth.state.isAuthenticated) {
+      navigate({ to: "/chat", replace: true });
+    }
+  });
 
   const form = createForm(() => ({
     defaultValues: { email: "", password: "" },

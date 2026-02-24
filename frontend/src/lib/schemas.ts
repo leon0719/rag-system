@@ -25,15 +25,3 @@ export const registerSchema = z
     message: "Passwords do not match",
     path: ["confirmPassword"],
   });
-
-export const querySchema = z.object({
-  question: z
-    .string()
-    .min(1, "Please enter a question")
-    .max(2000, "Question must be at most 2000 characters"),
-  top_k: z.number().int().min(1).max(20).optional(),
-});
-
-export type LoginValues = z.infer<typeof loginSchema>;
-export type RegisterValues = z.infer<typeof registerSchema>;
-export type QueryValues = z.infer<typeof querySchema>;
